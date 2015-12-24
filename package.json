@@ -1,0 +1,19 @@
+{
+  "name": "anjin-game",
+  "version": "1.0.0",
+  "description": "A game inspired by the C64 Shogun game, in turn inspired by James Clavell's classic novel.",
+  "main": "anjin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Offlein/anjin.git"
+  },
+  "author": "Craig Leinoff",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Offlein/anjin/issues"
+  },
+  "homepage": "https://github.com/Offlein/anjin#readme"
+}
