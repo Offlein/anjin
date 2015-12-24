@@ -1,0 +1,33 @@
+{
+  "name": "Anjin",
+  "main": "Anjin.js",
+  "homepage": "https://github.com/Offlein/anjin",
+  "authors": [
+    "Craig Leinoff <craig.leinoff@gmail.com>"
+  ],
+  "description": "Game based on the C64 game \"Shogun\", based on James Clavell's novel.",
+  "moduleType": [
+    "node"
+  ],
+  "keywords": [
+    "Anjin",
+    "Shogun",
+    "James",
+    "Clavell",
+    "Game",
+    "C64"
+  ],
+  "license": "",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "easystarjs": "~0.2.3",
+    "phaser": "~2.4.4"
+  }
+}
