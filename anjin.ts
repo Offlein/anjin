@@ -136,7 +136,25 @@ class Anjin {
 
         //map.createLayer("Biru");
 
-        this.map.setCollisionBetween(1, 2000, true, 'collision');
+        this.map.setCollisionBetween(22, 39, true, 'collision');
+        AnjinModule.anjinStar.easyStar = new EasyStar.js();
+
+        // Map out the collision data
+        var collisionMap = this.collisionLayer.layer.data.map(function(row, rowIndex, data) {
+            return row.map(function(cell, cellIndex, rowData) {
+                if (cell.index != -1) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            });
+        });
+
+        AnjinModule.anjinStar.easyStar.setGrid(collisionMap);
+        AnjinModule.anjinStar.easyStar.setIterationsPerCalculation(1000);
+        AnjinModule.anjinStar.easyStar.setAcceptableTiles([0]);
+        AnjinModule.anjinStar.easyStar.enableDiagonals();
 
         this.cursors = this.game.input.keyboard.createCursorKeys();
         this.keys = new AnjinModule.Keys();
@@ -146,19 +164,107 @@ class Anjin {
         this.keys.right = this.game.input.keyboard.addKey(Phaser.Keyboard.D);
 
         var start = <ObjectEntity>this.map.objects['objects'][0];
-        this.player = this.game.add.sprite(start.x, start.y, 'naga');
-        this.player.anchor.set(0.5);
+        var dest  = <ObjectEntity>this.map.objects['objects'][1];
 
-        this.game.physics.enable(this.player);
+        this.player = new AnjinModule.PlayerActor();
+        this.player.sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height/2), 'naga');
+        this.player.sprite.anchor.set(0.5);
 
-        this.game.camera.follow(this.player);
+        this.game.physics.enable(this.player.sprite);
+
+        this.game.camera.follow(this.player.sprite);
+
+        AnjinModule.anjinStar.currX = ((start.x / 64));
+        AnjinModule.anjinStar.currY = ((start.y / 64));
+        AnjinModule.anjinStar.destX = ((dest.x / 64));
+        AnjinModule.anjinStar.destY = ((dest.y / 64));
+
+        // Handle automotion
+        setInterval(function() {
+            AnjinModule.anjinStar.easyStar.findPath(AnjinModule.anjinStar.currX, AnjinModule.anjinStar.currY,
+                AnjinModule.anjinStar.destX, AnjinModule.anjinStar.destY, function(path) {
+                if (path === null) {
+                    console.log("The path to the destination point was not found.");
+                }
+                if (path && path[1]) {
+                    var currX = AnjinModule.anjinStar.currX;
+                    var currY = AnjinModule.anjinStar.currY;
+                    var nextX = path[1].x;
+                    var nextY = path[1].y;
+
+                    var nextMove = "";
+                    if (nextY < currY) {
+                        nextMove += "N";
+                    }
+                    else if (nextY > currY) {
+                        nextMove += "S";
+                    }
+                    if (nextX > currX) {
+                        nextMove += "E";
+                    }
+                    else if (nextX < currX) {
+                        nextMove += "W";
+                    }
+                    if (nextMove === "") {
+                        nextMove = "STOP";
+                    }
+                    AnjinModule.anjinStar.nextMove = nextMove;
+                }
+            });
+            //console.log("Current tile: "+(AnjinModule.anjinStar.currX+","+AnjinModule.anjinStar.currY));
+            //console.log("Next move: "+AnjinModule.anjinStar.nextMove);
+
+            // Do calculation.
+            AnjinModule.anjinStar.easyStar.calculate();
+        }, 400);
     }
 
     update() {
-        this.game.physics.arcade.collide(this.player, this.collisionLayer);
+        var playerSprite = this.player.sprite;
 
-        this.player.body.velocity.x = 0;
-        this.player.body.velocity.y = 0;
+        this.game.physics.arcade.collide(this.player.sprite, this.collisionLayer);
+
+        playerSprite.body.velocity.x = 0;
+        playerSprite.body.velocity.y = 0;
+
+        switch (AnjinModule.anjinStar.nextMove) {
+            case "STOP":
+                break;
+            case "N":
+                playerSprite.y = playerSprite.y - 64;
+                break;
+            case "NE":
+                playerSprite.x = playerSprite.x + 64;
+                playerSprite.y = playerSprite.y - 64;
+                break;
+            case "NW":
+                playerSprite.x = playerSprite.x - 64;
+                playerSprite.y = playerSprite.y - 64;
+                break;
+            case "W":
+                playerSprite.x = playerSprite.x - 64;
+                break;
+            case "E":
+                playerSprite.x = playerSprite.x + 64;
+                break;
+            case "S":
+                playerSprite.y = playerSprite.y + 64;
+                break;
+            case "SE":
+                playerSprite.x = playerSprite.x + 64;
+                playerSprite.y = playerSprite.y + 64;
+                break
+            case "SW":
+                playerSprite.x = playerSprite.x - 64;
+                playerSprite.y = playerSprite.y + 64;
+                break
+        }
+        AnjinModule.anjinStar.nextMove = "STOP";
+        //console.log("Current Tile: "+ (Math.round((playerSprite.x-playerSprite.offsetX) / 64));
+        AnjinModule.anjinStar.currX = (Math.round((playerSprite.x-playerSprite.offsetX) / 64) );
+        AnjinModule.anjinStar.currY = (Math.round((playerSprite.y-playerSprite.offsetY) / 64) );
+        //console.log("Current Tile: "+ AnjinModule.anjinStar.currX+","+AnjinModule.anjinStar.currY );
+
 
         if (this.cursors.up.isDown || this.keys.up.isDown)
         {
