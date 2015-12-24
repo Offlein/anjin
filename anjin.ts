@@ -113,7 +113,8 @@ class Anjin {
     map: Phaser.Tilemap;
     collisionLayer: Phaser.TilemapLayer;
     cursors: Phaser.CursorKeys;
-    player: Phaser.Sprite;
+    keys: AnjinModule.Keys;
+    player: AnjinModule.PlayerActor;
 
     preload() {
         this.game.load.tilemap("AnjinMap", "assets/tilemaps/maps/anjin-tiles.json", null, Phaser.Tilemap.TILED_JSON);
@@ -132,11 +133,17 @@ class Anjin {
 
         this.map.createLayer('bg').resizeWorld();
         this.collisionLayer = this.map.createLayer('collision');
+
         //map.createLayer("Biru");
 
         this.map.setCollisionBetween(1, 2000, true, 'collision');
 
         this.cursors = this.game.input.keyboard.createCursorKeys();
+        this.keys = new AnjinModule.Keys();
+        this.keys.up    = this.game.input.keyboard.addKey(Phaser.Keyboard.W);
+        this.keys.down  = this.game.input.keyboard.addKey(Phaser.Keyboard.S);
+        this.keys.left  = this.game.input.keyboard.addKey(Phaser.Keyboard.A);
+        this.keys.right = this.game.input.keyboard.addKey(Phaser.Keyboard.D);
 
         var start = <ObjectEntity>this.map.objects['objects'][0];
         this.player = this.game.add.sprite(start.x, start.y, 'naga');
@@ -153,24 +160,24 @@ class Anjin {
         this.player.body.velocity.x = 0;
         this.player.body.velocity.y = 0;
 
-        if (this.cursors.up.isDown)
+        if (this.cursors.up.isDown || this.keys.up.isDown)
         {
-            this.player.body.velocity.y = -200;
+            playerSprite.body.velocity.y = -200;
         }
-        else if (this.cursors.down.isDown)
+        else if (this.cursors.down.isDown || this.keys.down.isDown)
         {
-            this.player.body.velocity.y = 200;
+            playerSprite.body.velocity.y = 200;
         }
 
-        if (this.cursors.left.isDown)
+        if (this.cursors.left.isDown || this.keys.left.isDown)
         {
-            this.player.body.velocity.x = -200;
-            this.player.scale.x = -1;
+            playerSprite.body.velocity.x = -200;
+            playerSprite.scale.x = -1;
         }
-        else if (this.cursors.right.isDown)
+        else if (this.cursors.right.isDown || this.keys.right.isDown)
         {
-            this.player.body.velocity.x = 200;
-            this.player.scale.x = 1;
+            playerSprite.body.velocity.x = 200;
+            playerSprite.scale.x = 1;
         }
     }
 }
