@@ -1,4 +1,5 @@
-/// <reference path="lib/phaser.d.ts"/>
+/// <reference path="./lib/phaser.d.ts"/>
+/// <reference path="typings/easystarjs/easystarjs.d.ts" />
 
 class ObjectEntity {
     height: number;
