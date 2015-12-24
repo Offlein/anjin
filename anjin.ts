@@ -289,7 +289,5 @@ class Anjin {
 }
 
 window.onload = () => {
-
-    var game = new Anjin();
-
+    var anjinGame = new Anjin();
 };
