@@ -15,9 +15,6 @@ class ObjectEntity {
 }
 module AnjinModule {
     export class AnjinGame {
-
-    }
-    export class EasyStar {
         static easyStar: easystarjs.js;
     }
     export class anjinStar {
@@ -26,6 +23,8 @@ module AnjinModule {
         destX: number = null;
         destY: number = null;
         nextMove: string = "STOP";
+        isMoving: boolean = false;
+        speed: number = 200; // # of MS to move one tile. Doesn't account for think time.
     }
     export interface ActorInterface {
         name: string;
@@ -105,6 +104,19 @@ module AnjinModule {
     export class NonPlayerActor extends Actor implements ActorInterface {
         nav: AnjinModule.anjinStar = new AnjinModule.anjinStar();
     }
+
+    export class AnjinCamera {
+        constructor() {
+            this.x = 0;
+            this.y = 0;
+            this.direction = '';
+            this.isMoving = false;
+        }
+        x: number;
+        y: number;
+        direction: string;
+        isMoving: boolean;
+    }
 }
 
 
@@ -113,7 +125,7 @@ module AnjinModule {
 class Anjin {
 
     constructor() {
-        this.game = new Phaser.Game(800, 800, Phaser.AUTO, '', { preload: this.preload, create: this.create, update: this.update });
+        this.game = new Phaser.Game(1280, 900, Phaser.AUTO, '', { preload: this.preload, create: this.create, update: this.update, movePlayer: this.movePlayer, moveCamera: this.moveCamera, moveNPCs: this.moveNPCs });
     }
 
     game: Phaser.Game;
@@ -121,7 +133,8 @@ class Anjin {
     collisionLayer: Phaser.TilemapLayer;
     cursors: Phaser.CursorKeys;
     keys: AnjinModule.Keys;
-    static player: AnjinModule.PlayerActor;
+    anjinCamera: AnjinModule.AnjinCamera;
+    player: AnjinModule.PlayerActor = new AnjinModule.PlayerActor('Blackthorne');
     static npc: Object;
 
     preload() {
@@ -134,9 +147,15 @@ class Anjin {
     }
 
     create() {
+        // Set up Camera.
+        this.anjinCamera = new AnjinModule.AnjinCamera();
+
+        // Set up NPCs.
         Anjin.npc = {
-            'naga': AnjinModule.NonPlayerActor = new AnjinModule.NonPlayerActor('Naga')
+            'naga': new AnjinModule.NonPlayerActor('Naga')
         };
+
+        // Set up map.
         this.map = this.game.add.tilemap("AnjinMap", 64, 64, 25, 25);
         this.map.addTilesetImage("anjin-sky","anjin-sky");
         this.map.addTilesetImage("anjin-grounds","anjin-grounds");
@@ -149,7 +168,7 @@ class Anjin {
         //map.createLayer("Biru");
 
         this.map.setCollisionBetween(22, 39, true, 'collision');
-        AnjinModule.easyStar = new EasyStar.js();
+        AnjinModule.AnjinGame.easyStar = new EasyStar.js();
 
         // Map out the collision data
         var collisionMap = this.collisionLayer.layer.data.map(function(row, rowIndex, data) {
@@ -164,10 +183,10 @@ class Anjin {
         });
 
         // Initialize EasyStar configuration.
-        AnjinModule.easyStar.setGrid(collisionMap);
-        AnjinModule.easyStar.setIterationsPerCalculation(1000);
-        AnjinModule.easyStar.setAcceptableTiles([0]);
-        AnjinModule.easyStar.enableDiagonals();
+        AnjinModule.AnjinGame.easyStar.setGrid(collisionMap);
+        AnjinModule.AnjinGame.easyStar.setIterationsPerCalculation(1000);
+        AnjinModule.AnjinGame.easyStar.setAcceptableTiles([0]);
+        AnjinModule.AnjinGame.easyStar.enableDiagonals();
 
         // Set up arrow + WASD control.
         this.cursors = this.game.input.keyboard.createCursorKeys();
@@ -182,36 +201,41 @@ class Anjin {
         var dest  = <ObjectEntity>this.map.objects['objects'][1];
 
         // Insert Player sprite ("Blackthorne").
-        this.player = new AnjinModule.PlayerActor('Blackthorne');
-        this.player.sprite = this.game.add.sprite(192, 192, 'blackthorne');
+        this.player = new AnjinModule.PlayerActor();
+        this.player.sprite = this.game.add.sprite(1024, 128, 'blackthorne');
         this.player.sprite.anchor.set(0.5);
-        this.game.physics.enable(this.player.sprite);
-        this.game.camera.follow(this.player.sprite);
+        this.game.physics.enable(this.player.sprite, Phaser.Physics.ARCADE);
+        this.player.sprite.body.setSize(64, 64, 0, 16);
+        // Focus camera
+        this.game.camera.focusOn(this.player.sprite);
 
         // Hardcode one NPC for now: Naga.
-        Anjin.npc.naga.sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height/2), 'naga');
-        Anjin.npc.naga.sprite.anchor.set(0.5);
+        Anjin.npc['naga'].sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height/2) - 32, 'naga');
+        Anjin.npc['naga'].sprite.anchor.set(0.5, 1);
 
-        Anjin.npc.naga.nav.currX = ((start.x / 64));
-        Anjin.npc.naga.nav.currY = ((start.y / 64));
-        Anjin.npc.naga.nav.destX = ((dest.x / 64));
-        Anjin.npc.naga.nav.destY = ((dest.y / 64));
+        Anjin.npc['naga'].nav.currX = ((start.x / 64));
+        Anjin.npc['naga'].nav.currY = ((start.y / 64));
+        Anjin.npc['naga'].nav.destX = ((dest.x / 64));
+        Anjin.npc['naga'].nav.destY = ((dest.y / 64));
 
         // Handle pathfinding for each NPC.
-        for (var npc in Anjin.npc) {
-            if (Anjin.npc.hasOwnProperty(npc)) {
+        for (var npcId in Anjin.npc) {
+            if (Anjin.npc.hasOwnProperty(npcId)) {
                 // This is an NPC. Initialize his "AnjinStar" data.
-                console.log("this: "+this.npc);
-                console.log("class: "+Anjin.npc);
                 setInterval(function() {
-                    AnjinModule.easyStar.findPath(Anjin.npc.naga.nav.currX, Anjin.npc.naga.nav.currY,
-                        Anjin.npc.naga.nav.destX, Anjin.npc.naga.nav.destY, function(path) {
+                    // Only find a path if the NPC is not moving
+                    if (Anjin.npc[npcId].nav.isMoving) {
+                        return;
+                    }
+                    // They're not, so let's plan.
+                    AnjinModule.AnjinGame.easyStar.findPath(Anjin.npc[npcId].nav.currX, Anjin.npc[npcId].nav.currY,
+                        Anjin.npc[npcId].nav.destX, Anjin.npc[npcId].nav.destY, function(path) {
                             if (path === null) {
                                 console.log("The path to the destination point was not found.");
                             }
                             if (path && path[1]) {
-                                var currX = Anjin.npc.naga.nav.currX;
-                                var currY = Anjin.npc.naga.nav.currY;
+                                var currX = Anjin.npc[npcId].nav.currX;
+                                var currY = Anjin.npc[npcId].nav.currY;
                                 var nextX = path[1].x;
                                 var nextY = path[1].y;
 
@@ -231,62 +255,29 @@ class Anjin {
                                 if (nextMove === "") {
                                     nextMove = "STOP";
                                 }
-                                Anjin.npc.naga.nav.nextMove = nextMove;
+                                Anjin.npc[npcId].nav.nextMove = nextMove;
                             }
                         });
-                    //console.log("Current tile: "+(Anjin.npc.naga.nav.currX+","+Anjin.npc.naga.nav.currY));
-                    //console.log("Next move: "+Anjin.npc.naga.nav.nextMove);
+                    //console.log("Current tile: "+(Anjin.npc[npcId].nav.currX+","+Anjin.npc[npcId].nav.currY));
+                    //console.log("Next move: "+Anjin.npc[npcId].nav.nextMove);
 
                     // Do calculation.
-                    AnjinModule.easyStar.calculate();
+                    AnjinModule.AnjinGame.easyStar.calculate();
                 }, 400);
             }
         }
     }
 
     update() {
-        // Handle NPC motion.
-        // Just hard-coding the one Naga NPC for now.
-        var nagaSprite = Anjin.npc.naga.sprite;
+        // Move player
+        this.movePlayer();
+        // Move camera
+        this.moveCamera();
+        // Move NPCs
+        this.moveNPCs();
+    }
 
-        switch (Anjin.npc.naga.nav.nextMove) {
-            case "STOP":
-                break;
-            case "N":
-                nagaSprite.y = nagaSprite.y - 64;
-                break;
-            case "NE":
-                nagaSprite.x = nagaSprite.x + 64;
-                nagaSprite.y = nagaSprite.y - 64;
-                break;
-            case "NW":
-                nagaSprite.x = nagaSprite.x - 64;
-                nagaSprite.y = nagaSprite.y - 64;
-                break;
-            case "W":
-                nagaSprite.x = nagaSprite.x - 64;
-                break;
-            case "E":
-                nagaSprite.x = nagaSprite.x + 64;
-                break;
-            case "S":
-                nagaSprite.y = nagaSprite.y + 64;
-                break;
-            case "SE":
-                nagaSprite.x = nagaSprite.x + 64;
-                nagaSprite.y = nagaSprite.y + 64;
-                break
-            case "SW":
-                nagaSprite.x = nagaSprite.x - 64;
-                nagaSprite.y = nagaSprite.y + 64;
-                break
-        }
-        Anjin.npc.naga.nav.nextMove = "STOP";
-        //console.log("Current Tile: "+ (Math.round((nagaSprite.x-nagaSprite.offsetX) / 64));
-        Anjin.npc.naga.nav.currX = (Math.round((nagaSprite.x-nagaSprite.offsetX) / 64) );
-        Anjin.npc.naga.nav.currY = (Math.round((nagaSprite.y-nagaSprite.offsetY) / 64) );
-        //console.log("Current Tile: "+ Anjin.npc.naga.nav.currX+","+Anjin.npc.naga.nav.currY );
-
+    movePlayer() {
         // Handle player motion.
         var playerSprite = this.player.sprite;
         playerSprite.body.velocity.x = 0;
@@ -304,12 +295,132 @@ class Anjin {
         if (this.cursors.left.isDown || this.keys.left.isDown)
         {
             playerSprite.body.velocity.x = -200;
-            playerSprite.scale.x = -1;
         }
         else if (this.cursors.right.isDown || this.keys.right.isDown)
         {
             playerSprite.body.velocity.x = 200;
-            playerSprite.scale.x = 1;
+        }
+    }
+
+    moveCamera() {
+        if (this.anjinCamera.isMoving) {
+            return;
+        }
+
+        this.anjinCamera.isMoving = true;
+        var mustMove = false;
+
+        if (this.player.sprite.y > this.game.camera.y + this.game.height) {
+            this.anjinCamera.y += 1;
+            mustMove = true;
+        }
+        else if (this.player.sprite.y < this.game.camera.y) {
+            this.anjinCamera.y -= 1;
+            mustMove = true;
+        }
+        else if (this.player.sprite.x > this.game.camera.x + this.game.width) {
+            this.anjinCamera.x = this.anjinCamera.x + 1;
+            mustMove = true;
+        }
+        else if (this.player.sprite.x < this.game.camera.x) {
+            this.anjinCamera.x = this.anjinCamera.x - 1;
+            mustMove = true;
+        }
+
+        if (mustMove) {
+            var destX = this.anjinCamera.x*this.game.width;
+            var destY = this.anjinCamera.y*this.game.height;
+
+            var t = this.game.add.tween(this.game.camera).to({x:destX, y:destY}, 600);
+            t.start();
+            t.onComplete.add(function(){this.anjinCamera.isMoving = false;}, this);
+        }
+        else {
+            this.anjinCamera.isMoving = false;
+        }
+    }
+
+    moveNPCs() {
+        // Handle NPC motion.
+        for (var npcId in Anjin.npc) {
+            if (Anjin.npc.hasOwnProperty(npcId)) {
+                // We've got an NPC.
+                var npcSprite = Anjin.npc[npcId].sprite;
+                var npcNav = Anjin.npc[npcId].nav;
+
+                if (npcNav.isMoving) {
+                    // Do nothing if it's currently moving!
+                    return;
+                }
+                else {
+                    // We're not moving - let's go!
+                    var impulseDest = {
+                        x: npcSprite.x,
+                        y: npcSprite.y
+                    }
+                    npcNav.isMoving = true;
+                    switch (Anjin.npc[npcId].nav.nextMove) {
+                        case "STOP":
+                            npcNav.isMoving = false;
+                            break;
+                        case "N":
+                            impulseDest.y = npcSprite.y - 64;
+                            //npcSprite.y = npcSprite.y - 64;
+                            break;
+                        case "NE":
+                            impulseDest.x = npcSprite.x + 64;
+                            impulseDest.y = npcSprite.y - 64;
+                            //npcSprite.x = npcSprite.x + 64;
+                            //npcSprite.y = npcSprite.y - 64;
+                            break;
+                        case "NW":
+                            impulseDest.x = npcSprite.x - 64;
+                            impulseDest.y = npcSprite.y - 64;
+                            //npcSprite.x = npcSprite.x - 64;
+                            //npcSprite.y = npcSprite.y - 64;
+                            break;
+                        case "W":
+                            impulseDest.x = npcSprite.x - 64;
+                            //npcSprite.x = npcSprite.x - 64;
+                            break;
+                        case "E":
+                            impulseDest.x = npcSprite.x + 64;
+                            //npcSprite.x = npcSprite.x + 64;
+                            break;
+                        case "S":
+                            impulseDest.y = npcSprite.y + 64;
+                            //npcSprite.y = npcSprite.y + 64;
+                            break;
+                        case "SE":
+                            impulseDest.x = npcSprite.x + 64;
+                            impulseDest.y = npcSprite.y + 64;
+                            //npcSprite.x = npcSprite.x + 64;
+                            //npcSprite.y = npcSprite.y + 64;
+                            break;
+                        case "SW":
+                            impulseDest.x = npcSprite.x - 64;
+                            impulseDest.y = npcSprite.y + 64;
+                            //npcSprite.x = npcSprite.x - 64;
+                            //npcSprite.y = npcSprite.y + 64;
+                            break;
+                    }
+                    // Process impulse.
+                    if (impulseDest.x != npcSprite.x || impulseDest.y != npcSprite.y) {
+                        var t = this.game.add.tween(npcSprite).to({x:impulseDest.x, y:impulseDest.y}, npcNav.speed);
+                        t.start();
+                        t.onComplete.add(function(){
+                            // Done animating NPC move.
+                            npcNav.isMoving = false;
+                        }, this);
+                    }
+
+                    Anjin.npc[npcId].nav.nextMove = "STOP";
+                    //console.log("Current Tile: "+ (Math.round((npcSprite.x-npcSprite.offsetX) / 64));
+                    Anjin.npc[npcId].nav.currX = (Math.round((npcSprite.x-npcSprite.offsetX) / 64) );
+                    Anjin.npc[npcId].nav.currY = (Math.round((npcSprite.y-npcSprite.offsetY) / 64) );
+                    //console.log("Current Tile: "+ Anjin.npc[npcId].nav.currX+","+Anjin.npc[npcId].nav.currY );
+                }
+            }
         }
     }
 }
