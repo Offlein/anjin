@@ -16,6 +16,7 @@ class ObjectEntity {
 module AnjinModule {
     export class AnjinGame {
         static easyStar: easystarjs.js;
+        static isPaused: boolean = false;
     }
     export class anjinStar {
         currX: number = null;
@@ -125,10 +126,19 @@ module AnjinModule {
 class Anjin {
 
     constructor() {
-        this.game = new Phaser.Game(1280, 900, Phaser.AUTO, '', { preload: this.preload, create: this.create, update: this.update, movePlayer: this.movePlayer, moveCamera: this.moveCamera, moveNPCs: this.moveNPCs, render: this.render });
+        this.game = new Phaser.Game(1280, 900, Phaser.AUTO, '',
+            {
+                preload: this.preload,
+                create: this.create,
+                update: this.update,
+                movePlayer: this.movePlayer,
+                moveCamera: this.moveCamera,
+                moveNPCs: this.moveNPCs,
+                render: this.render
+            });
     }
 
-    game: Phaser.Game;
+    static game: Phaser.Game;
     map: Phaser.Tilemap;
     collisionLayer: Phaser.TilemapLayer;
     cursors: Phaser.CursorKeys;
@@ -214,6 +224,12 @@ class Anjin {
         // Focus camera
         this.game.camera.focusOn(this.player.sprite);
 
+        // Adding pause button.
+        var spaceKey = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+        spaceKey.onDown.add(function() {
+            AnjinModule.AnjinGame.isPaused = !(AnjinModule.AnjinGame.isPaused);
+        });
+
         // Hardcode one NPC for now: Naga.
         Anjin.npc['naga'].sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height), 'naga');
         Anjin.npc['naga'].sprite.anchor.set(0.5, 1);
@@ -222,7 +238,7 @@ class Anjin {
         Anjin.npc['naga'].nav.currX = ((start.x / 64));
         Anjin.npc['naga'].nav.currY = ((start.y / 64)) - 1;
         Anjin.npc['naga'].nav.destX = ((dest.x / 64));
-        Anjin.npc['naga'].nav.destY = ((dest.y / 64)) - 1;
+        Anjin.npc['naga'].nav.destY = ((dest.y / 64));
 
         // Handle pathfinding for each NPC.
         for (var npcId in Anjin.npc) {
@@ -275,15 +291,22 @@ class Anjin {
     }
 
     update() {
-        // Move player
-        this.movePlayer();
-        // Move camera
-        this.moveCamera();
-        // Move NPCs
-        this.moveNPCs();
+        if (!(AnjinModule.AnjinGame.isPaused)) {
+            // Move player
+            this.movePlayer();
+            // Move camera
+            this.moveCamera();
+            // Move NPCs
+            this.moveNPCs();
 
-        // Handle Z-index for sprites for proper overlapping.
-        this.actorGroup.sort('y', Phaser.Group.SORT_ASCENDING);
+            // Handle Z-index for sprites for proper overlapping.
+            this.actorGroup.sort('y', Phaser.Group.SORT_ASCENDING);
+        }
+        else {
+            // Stop Player.
+            this.player.sprite.body.velocity.x = 0;
+            this.player.sprite.body.velocity.y = 0;
+        }
     }
 
     movePlayer() {
