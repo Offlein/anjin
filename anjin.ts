@@ -125,7 +125,7 @@ module AnjinModule {
 class Anjin {
 
     constructor() {
-        this.game = new Phaser.Game(1280, 900, Phaser.AUTO, '', { preload: this.preload, create: this.create, update: this.update, movePlayer: this.movePlayer, moveCamera: this.moveCamera, moveNPCs: this.moveNPCs });
+        this.game = new Phaser.Game(1280, 900, Phaser.AUTO, '', { preload: this.preload, create: this.create, update: this.update, movePlayer: this.movePlayer, moveCamera: this.moveCamera, moveNPCs: this.moveNPCs, render: this.render });
     }
 
     game: Phaser.Game;
@@ -135,7 +135,8 @@ class Anjin {
     keys: AnjinModule.Keys;
     anjinCamera: AnjinModule.AnjinCamera;
     player: AnjinModule.PlayerActor = new AnjinModule.PlayerActor('Blackthorne');
-    static npc: Object;
+    npc: Object;
+    actorGroup: Phaser.Group;
 
     preload() {
         this.game.load.tilemap("AnjinMap", "assets/tilemaps/maps/anjin-tiles.json", null, Phaser.Tilemap.TILED_JSON);
@@ -200,23 +201,28 @@ class Anjin {
         var start = <ObjectEntity>this.map.objects['objects'][0];
         var dest  = <ObjectEntity>this.map.objects['objects'][1];
 
+        // Character groups.
+        this.actorGroup = this.game.add.group();
+
         // Insert Player sprite ("Blackthorne").
         this.player = new AnjinModule.PlayerActor();
-        this.player.sprite = this.game.add.sprite(1024, 128, 'blackthorne');
-        this.player.sprite.anchor.set(0.5);
+        this.player.sprite = this.actorGroup.create(1024, 192, 'blackthorne');
         this.game.physics.enable(this.player.sprite, Phaser.Physics.ARCADE);
-        this.player.sprite.body.setSize(64, 64, 0, 16);
+        this.player.sprite.anchor.set(0.5, 1);
+        this.player.sprite.body.setSize(64, 64, 0, 0);
+
         // Focus camera
         this.game.camera.focusOn(this.player.sprite);
 
         // Hardcode one NPC for now: Naga.
-        Anjin.npc['naga'].sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height/2) - 32, 'naga');
+        Anjin.npc['naga'].sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height), 'naga');
         Anjin.npc['naga'].sprite.anchor.set(0.5, 1);
+        this.actorGroup.add(Anjin.npc['naga'].sprite);
 
         Anjin.npc['naga'].nav.currX = ((start.x / 64));
-        Anjin.npc['naga'].nav.currY = ((start.y / 64));
+        Anjin.npc['naga'].nav.currY = ((start.y / 64)) - 1;
         Anjin.npc['naga'].nav.destX = ((dest.x / 64));
-        Anjin.npc['naga'].nav.destY = ((dest.y / 64));
+        Anjin.npc['naga'].nav.destY = ((dest.y / 64)) - 1;
 
         // Handle pathfinding for each NPC.
         for (var npcId in Anjin.npc) {
@@ -275,6 +281,9 @@ class Anjin {
         this.moveCamera();
         // Move NPCs
         this.moveNPCs();
+
+        // Handle Z-index for sprites for proper overlapping.
+        this.actorGroup.sort('y', Phaser.Group.SORT_ASCENDING);
     }
 
     movePlayer() {
@@ -357,7 +366,7 @@ class Anjin {
                     var impulseDest = {
                         x: npcSprite.x,
                         y: npcSprite.y
-                    }
+                    };
                     npcNav.isMoving = true;
                     switch (Anjin.npc[npcId].nav.nextMove) {
                         case "STOP":
@@ -365,43 +374,31 @@ class Anjin {
                             break;
                         case "N":
                             impulseDest.y = npcSprite.y - 64;
-                            //npcSprite.y = npcSprite.y - 64;
                             break;
                         case "NE":
                             impulseDest.x = npcSprite.x + 64;
                             impulseDest.y = npcSprite.y - 64;
-                            //npcSprite.x = npcSprite.x + 64;
-                            //npcSprite.y = npcSprite.y - 64;
                             break;
                         case "NW":
                             impulseDest.x = npcSprite.x - 64;
                             impulseDest.y = npcSprite.y - 64;
-                            //npcSprite.x = npcSprite.x - 64;
-                            //npcSprite.y = npcSprite.y - 64;
                             break;
                         case "W":
                             impulseDest.x = npcSprite.x - 64;
-                            //npcSprite.x = npcSprite.x - 64;
                             break;
                         case "E":
                             impulseDest.x = npcSprite.x + 64;
-                            //npcSprite.x = npcSprite.x + 64;
                             break;
                         case "S":
                             impulseDest.y = npcSprite.y + 64;
-                            //npcSprite.y = npcSprite.y + 64;
                             break;
                         case "SE":
                             impulseDest.x = npcSprite.x + 64;
                             impulseDest.y = npcSprite.y + 64;
-                            //npcSprite.x = npcSprite.x + 64;
-                            //npcSprite.y = npcSprite.y + 64;
                             break;
                         case "SW":
                             impulseDest.x = npcSprite.x - 64;
                             impulseDest.y = npcSprite.y + 64;
-                            //npcSprite.x = npcSprite.x - 64;
-                            //npcSprite.y = npcSprite.y + 64;
                             break;
                     }
                     // Process impulse.
@@ -417,11 +414,13 @@ class Anjin {
                     Anjin.npc[npcId].nav.nextMove = "STOP";
                     //console.log("Current Tile: "+ (Math.round((npcSprite.x-npcSprite.offsetX) / 64));
                     Anjin.npc[npcId].nav.currX = (Math.round((npcSprite.x-npcSprite.offsetX) / 64) );
-                    Anjin.npc[npcId].nav.currY = (Math.round((npcSprite.y-npcSprite.offsetY) / 64) );
+                    Anjin.npc[npcId].nav.currY = (Math.round(npcSprite.y / 64)) - 1;
                     //console.log("Current Tile: "+ Anjin.npc[npcId].nav.currX+","+Anjin.npc[npcId].nav.currY );
                 }
             }
         }
+    }
+    render() {
     }
 }
 
