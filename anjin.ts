@@ -292,7 +292,7 @@ class Anjin {
         // Initialize GUI stuff.
         this.guiGroup = this.game.add.group();
         this.game.add.group(this.guiGroup, 'selections');
-        var attackText = this.game.add.text(20, this.game.scale.height-100, 'Attack whom? ', {
+        var attackText = this.game.add.text(20, this.game.scale.height-100, 'No one to attack.', {
             'backgroundColor': '#FFFFFF',
             'fontSize': 32
         });
