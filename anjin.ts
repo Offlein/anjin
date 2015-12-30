@@ -122,7 +122,6 @@ module AnjinModule {
 
 
 
-
 class Anjin {
 
     constructor() {
@@ -131,6 +130,8 @@ class Anjin {
                 preload: this.preload,
                 create: this.create,
                 update: this.update,
+                togglePause: this.togglePause,
+                attackGui: this.attackGui,
                 movePlayer: this.movePlayer,
                 moveCamera: this.moveCamera,
                 moveNPCs: this.moveNPCs,
@@ -147,6 +148,8 @@ class Anjin {
     player: AnjinModule.PlayerActor = new AnjinModule.PlayerActor('Blackthorne');
     npc: Object;
     actorGroup: Phaser.Group;
+    guiGroup: Phaser.Group;
+    texts: Object = {};
 
     preload() {
         this.game.load.tilemap("AnjinMap", "assets/tilemaps/maps/anjin-tiles.json", null, Phaser.Tilemap.TILED_JSON);
@@ -171,14 +174,11 @@ class Anjin {
         this.map.addTilesetImage("anjin-sky","anjin-sky");
         this.map.addTilesetImage("anjin-grounds","anjin-grounds");
         //this.map.addTilesetImage("anjin-biru","anjin-biru");
-
-
         this.map.createLayer('bg').resizeWorld();
         this.collisionLayer = this.map.createLayer('collision');
-
-        //map.createLayer("Biru");
-
         this.map.setCollisionBetween(22, 39, true, 'collision');
+
+        // Initialize EasyStar Pathfinding
         AnjinModule.AnjinGame.easyStar = new EasyStar.js();
 
         // Map out the collision data
@@ -226,8 +226,8 @@ class Anjin {
 
         // Adding pause button.
         var spaceKey = this.game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-        spaceKey.onDown.add(function() {
-            AnjinModule.AnjinGame.isPaused = !(AnjinModule.AnjinGame.isPaused);
+        spaceKey.onDown.add(() => {
+            this.togglePause();
         });
 
         // Hardcode one NPC for now: Naga.
@@ -288,6 +288,20 @@ class Anjin {
                 }, 400);
             }
         }
+
+        // Initialize GUI stuff.
+        this.guiGroup = this.game.add.group();
+        this.game.add.group(this.guiGroup, 'selections');
+        var attackText = this.game.add.text(20, this.game.scale.height-100, 'Attack whom? ', {
+            'backgroundColor': '#FFFFFF',
+            'fontSize': 32
+        });
+        this.texts = {};
+        this.texts['attackText'] = attackText;
+        attackText.fixedToCamera = true;
+        attackText.fontSize = 72;
+        this.guiGroup.add(attackText);
+        this.guiGroup.visible = false;
     }
 
     update() {
@@ -306,6 +320,54 @@ class Anjin {
             // Stop Player.
             this.player.sprite.body.velocity.x = 0;
             this.player.sprite.body.velocity.y = 0;
+        }
+    }
+
+    togglePause() {
+        if (!AnjinModule.AnjinGame.isPaused) {
+            // It was not paused. PAUSE.
+            AnjinModule.AnjinGame.isPaused = true;
+            this.attackGui(true);
+        }
+        else {
+            // It was paused. UNPAUSE.
+            AnjinModule.AnjinGame.isPaused = false;
+            this.attackGui(false);
+        }
+    }
+
+    attackGui(isActive: boolean) {
+        this.guiGroup.visible = isActive;
+
+        var selections = null;
+        var text = null;
+        // Find the "selections" subgroup.
+        for (var i=0; i < this.guiGroup.children.length; i++) {
+            if (this.guiGroup.children[i].name == 'selections') {
+                selections = this.guiGroup.children[i];
+            }
+        }
+
+        if (isActive) {
+            var squares = [];
+            for (var delta=1; delta < this.actorGroup.children.length; delta++) {
+                var actor = this.actorGroup.children[delta];
+                var padding = 20;
+                var square = this.game.add.bitmapData(actor.width + padding, actor.height + padding);
+                square.ctx.beginPath();
+                square.ctx.strokeStyle = 'red';
+                square.ctx.strokeRect(0, 0, square.width, square.height);
+                this.game.add.sprite(actor.x-(square.width / 2), actor.y-square.height + (padding / 2), square, null, selections);
+                if (this.texts['attackText']) {
+                    this.texts['attackText'].setText("Attack "+this.actorGroup.children[delta].key);
+                }
+            }
+        }
+        else {
+            // Remove all selections squares.
+            for (var i=0; i < this.guiGroup.children.length; i++) {
+                selections.removeAll();
+            }
         }
     }
 
