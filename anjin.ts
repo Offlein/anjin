@@ -1,11 +1,26 @@
 /// <reference path="./lib/phaser.d.ts"/>
-/// <reference path="typings/easystarjs/easystarjs.d.ts" />
+/// <reference path="./typings/easystarjs/easystarjs.d.ts" />
+
+/// <reference path="./typings/easystarjs/easystarjs.d.ts" />
+
+enum Roles {
+    Sailor,  // Gaijin
+    Priest, // Gaijin
+    Peasant,
+    Servant,
+    Samurai,
+    Lord
+}
+enum Religion {
+    Shinto,
+    Catholic,
+    Protestant
+}
 
 class ObjectEntity {
     height: number;
     name: string;
     properties: any;
-    rectange: boolean;
     rotation: number;
     type: string;
     visible: boolean;
@@ -41,6 +56,25 @@ module AnjinModule {
         left: Phaser.Key;
         right: Phaser.Key;
     }
+
+    // Actor Relationships are data attributes from the perspective of one actor toward another.
+    class ActorRelationship {
+        fear: number;
+        disgust: number;
+        respect: number;
+        exotique: number;
+    }
+
+    // Actor Attributes are data attributes describing an actor.
+    class ActorAttribs {
+        strength: number = 5;
+        respect: number = 1;
+        safety: number = 1;
+        charisma: number = 1;
+        role: Roles = Roles["Peasant"];
+        religion: Religion = Religion["Shinto"];
+    }
+
     class Actor implements ActorInterface {
         private _name: string;
         private _x: number;
@@ -48,6 +82,9 @@ module AnjinModule {
         private _width: number = 64;
         private _height: number = 64;
         private _sprite: Phaser.Sprite;
+
+        attribs: ActorAttribs = new ActorAttribs();
+        relationships: { [key:string]:ActorRelationship; } = {};
 
         constructor(ActorName: string) {
             this.name = ActorName;
