@@ -162,7 +162,7 @@ module AnjinModule {
 class Anjin {
 
     constructor() {
-        this.game = new Phaser.Game(1280, 900, Phaser.AUTO, '',
+        this.game = new Phaser.Game(800, 600, Phaser.AUTO, '',
             {
                 preload: this.preload,
                 create: this.create,
