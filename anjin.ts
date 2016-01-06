@@ -1,21 +1,11 @@
-/// <reference path="./lib/phaser.d.ts"/>
+/// <reference path="./lib/phaser.d.ts" />
 /// <reference path="./typings/easystarjs/easystarjs.d.ts" />
 
-/// <reference path="./typings/easystarjs/easystarjs.d.ts" />
-
-enum Roles {
-    Sailor,  // Gaijin
-    Priest, // Gaijin
-    Peasant,
-    Servant,
-    Samurai,
-    Lord
-}
-enum Religion {
-    Shinto,
-    Catholic,
-    Protestant
-}
+import {Roles, Religion} from "./src/AnjinDataTypes";
+import {AnjinGame} from "./src/AnjinGame";
+import {AnjinCamera} from './src/AnjinCamera';
+import {PlayerActor, NonPlayerActor} from './src/Actor/Actor';
+import {Keys} from './src/Keys';
 
 class ObjectEntity {
     height: number;
@@ -28,140 +18,23 @@ class ObjectEntity {
     x: number;
     y: number;
 }
-module AnjinModule {
-    export class AnjinGame {
-        static easyStar: easystarjs.js;
-        static isPaused: boolean = false;
-    }
-    export class anjinStar {
-        currX: number = null;
-        currY: number = null;
-        destX: number = null;
-        destY: number = null;
-        nextMove: string = "STOP";
-        isMoving: boolean = false;
-        speed: number = 200; // # of MS to move one tile. Doesn't account for think time.
-    }
-    export interface ActorInterface {
-        name: string;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-        sprite: Phaser.Sprite;
-    }
-    export class Keys {
-        up: Phaser.Key;
-        down: Phaser.Key;
-        left: Phaser.Key;
-        right: Phaser.Key;
-    }
-
-    // Actor Relationships are data attributes from the perspective of one actor toward another.
-    class ActorRelationship {
-        fear: number;
-        disgust: number;
-        respect: number;
-        exotique: number;
-    }
-
-    // Actor Attributes are data attributes describing an actor.
-    class ActorAttribs {
-        strength: number = 5;
-        respect: number = 1;
-        safety: number = 1;
-        charisma: number = 1;
-        role: Roles = Roles["Peasant"];
-        religion: Religion = Religion["Shinto"];
-    }
-
-    class Actor implements ActorInterface {
-        private _name: string;
-        private _x: number;
-        private _y: number;
-        private _width: number = 64;
-        private _height: number = 64;
-        private _sprite: Phaser.Sprite;
-
-        attribs: ActorAttribs = new ActorAttribs();
-        relationships: { [key:string]:ActorRelationship; } = {};
-
-        constructor(ActorName: string) {
-            this.name = ActorName;
-        }
-        get name():string {
-            return this._name;
-        }
-
-        set name(value:string) {
-            this._name = value;
-        }
-
-        get x():number {
-            return this._x;
-        }
-
-        set x(value:number) {
-            this._x = value;
-        }
-
-        get y():number {
-            return this._y;
-        }
-
-        set y(value:number) {
-            this._y = value;
-        }
-
-        get width():number {
-            return this._width;
-        }
-
-        set width(value:number) {
-            this._width = value;
-        }
-
-        get height():number {
-            return this._height;
-        }
-
-        set height(value:number) {
-            this._height = value;
-        }
-        get sprite(): Phaser.Sprite {
-            return this._sprite;
-        }
-        set sprite(newSprite: Phaser.Sprite) {
-            this._sprite = newSprite;
-        }
-    }
-
-    export class PlayerActor extends Actor implements ActorInterface {
-
-    }
-    export class NonPlayerActor extends Actor implements ActorInterface {
-        nav: AnjinModule.anjinStar = new AnjinModule.anjinStar();
-    }
-
-    export class AnjinCamera {
-        constructor() {
-            this.x = 0;
-            this.y = 0;
-            this.direction = '';
-            this.isMoving = false;
-        }
-        x: number;
-        y: number;
-        direction: string;
-        isMoving: boolean;
-    }
-}
 
 
-
-class Anjin {
+export class Anjin {
+    game: Phaser.Game;
+    map: Phaser.Tilemap;
+    collisionLayer: Phaser.TilemapLayer;
+    cursors: Phaser.CursorKeys;
+    keys: Keys;
+    anjinCamera: AnjinCamera;
+    player: PlayerActor;
+    npc: Object = {};
+    actorGroup: Phaser.Group;
+    guiGroup: Phaser.Group;
+    texts: Object = {};
 
     constructor() {
+        console.log(this.player);
         this.game = new Phaser.Game(800, 600, Phaser.AUTO, '',
             {
                 preload: this.preload,
@@ -176,18 +49,6 @@ class Anjin {
             });
     }
 
-    static game: Phaser.Game;
-    map: Phaser.Tilemap;
-    collisionLayer: Phaser.TilemapLayer;
-    cursors: Phaser.CursorKeys;
-    keys: AnjinModule.Keys;
-    anjinCamera: AnjinModule.AnjinCamera;
-    player: AnjinModule.PlayerActor = new AnjinModule.PlayerActor('Blackthorne');
-    npc: Object;
-    actorGroup: Phaser.Group;
-    guiGroup: Phaser.Group;
-    texts: Object = {};
-
     preload() {
         this.game.load.tilemap("AnjinMap", "assets/tilemaps/maps/anjin-tiles.json", null, Phaser.Tilemap.TILED_JSON);
         this.game.load.image("anjin-sky", "assets/tilemaps/tiles/anjin-sky.png");
@@ -199,11 +60,11 @@ class Anjin {
 
     create() {
         // Set up Camera.
-        this.anjinCamera = new AnjinModule.AnjinCamera();
+        this.anjinCamera = new AnjinCamera();
 
         // Set up NPCs.
-        Anjin.npc = {
-            'naga': new AnjinModule.NonPlayerActor('Naga')
+        this.npc = {
+            'naga': new NonPlayerActor('Naga')
         };
 
         // Set up map.
@@ -216,7 +77,7 @@ class Anjin {
         this.map.setCollisionBetween(22, 39, true, 'collision');
 
         // Initialize EasyStar Pathfinding
-        AnjinModule.AnjinGame.easyStar = new EasyStar.js();
+        AnjinGame.easyStar = new EasyStar.js();
 
         // Map out the collision data
         var collisionMap = this.collisionLayer.layer.data.map(function(row, rowIndex, data) {
@@ -231,14 +92,14 @@ class Anjin {
         });
 
         // Initialize EasyStar configuration.
-        AnjinModule.AnjinGame.easyStar.setGrid(collisionMap);
-        AnjinModule.AnjinGame.easyStar.setIterationsPerCalculation(1000);
-        AnjinModule.AnjinGame.easyStar.setAcceptableTiles([0]);
-        AnjinModule.AnjinGame.easyStar.enableDiagonals();
+        AnjinGame.easyStar.setGrid(collisionMap);
+        AnjinGame.easyStar.setIterationsPerCalculation(1000);
+        AnjinGame.easyStar.setAcceptableTiles([0]);
+        AnjinGame.easyStar.enableDiagonals();
 
         // Set up arrow + WASD control.
         this.cursors = this.game.input.keyboard.createCursorKeys();
-        this.keys = new AnjinModule.Keys();
+        this.keys = new Keys();
         this.keys.up    = this.game.input.keyboard.addKey(Phaser.Keyboard.W);
         this.keys.down  = this.game.input.keyboard.addKey(Phaser.Keyboard.S);
         this.keys.left  = this.game.input.keyboard.addKey(Phaser.Keyboard.A);
@@ -252,7 +113,8 @@ class Anjin {
         this.actorGroup = this.game.add.group();
 
         // Insert Player sprite ("Blackthorne").
-        this.player = new AnjinModule.PlayerActor();
+        this.player = new PlayerActor('Blackthorne')
+        console.log(this.player);
         this.player.sprite = this.actorGroup.create(1024, 192, 'blackthorne');
         this.game.physics.enable(this.player.sprite, Phaser.Physics.ARCADE);
         this.player.sprite.anchor.set(0.5, 1);
@@ -268,33 +130,33 @@ class Anjin {
         });
 
         // Hardcode one NPC for now: Naga.
-        Anjin.npc['naga'].sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height), 'naga');
-        Anjin.npc['naga'].sprite.anchor.set(0.5, 1);
-        this.actorGroup.add(Anjin.npc['naga'].sprite);
+        this.npc['naga'].sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height), 'naga');
+        this.npc['naga'].sprite.anchor.set(0.5, 1);
+        this.actorGroup.add(this.npc['naga'].sprite);
 
-        Anjin.npc['naga'].nav.currX = ((start.x / 64));
-        Anjin.npc['naga'].nav.currY = ((start.y / 64)) - 1;
-        Anjin.npc['naga'].nav.destX = ((dest.x / 64));
-        Anjin.npc['naga'].nav.destY = ((dest.y / 64));
+        this.npc['naga'].nav.currX = ((start.x / 64));
+        this.npc['naga'].nav.currY = ((start.y / 64)) - 1;
+        this.npc['naga'].nav.destX = ((dest.x / 64));
+        this.npc['naga'].nav.destY = ((dest.y / 64));
 
         // Handle pathfinding for each NPC.
-        for (var npcId in Anjin.npc) {
-            if (Anjin.npc.hasOwnProperty(npcId)) {
+        for (var npcId in this.npc) {
+            if (this.npc.hasOwnProperty(npcId)) {
                 // This is an NPC. Initialize his "AnjinStar" data.
-                setInterval(function() {
+                setInterval(() => {
                     // Only find a path if the NPC is not moving
-                    if (Anjin.npc[npcId].nav.isMoving) {
+                    if (this.npc[npcId].nav.isMoving) {
                         return;
                     }
                     // They're not, so let's plan.
-                    AnjinModule.AnjinGame.easyStar.findPath(Anjin.npc[npcId].nav.currX, Anjin.npc[npcId].nav.currY,
-                        Anjin.npc[npcId].nav.destX, Anjin.npc[npcId].nav.destY, function(path) {
+                    AnjinGame.easyStar.findPath(this.npc[npcId].nav.currX, this.npc[npcId].nav.currY,
+                        this.npc[npcId].nav.destX, this.npc[npcId].nav.destY, (path) => {
                             if (path === null) {
                                 console.log("The path to the destination point was not found.");
                             }
                             if (path && path[1]) {
-                                var currX = Anjin.npc[npcId].nav.currX;
-                                var currY = Anjin.npc[npcId].nav.currY;
+                                var currX = this.npc[npcId].nav.currX;
+                                var currY = this.npc[npcId].nav.currY;
                                 var nextX = path[1].x;
                                 var nextY = path[1].y;
 
@@ -314,14 +176,14 @@ class Anjin {
                                 if (nextMove === "") {
                                     nextMove = "STOP";
                                 }
-                                Anjin.npc[npcId].nav.nextMove = nextMove;
+                                this.npc[npcId].nav.nextMove = nextMove;
                             }
                         });
-                    //console.log("Current tile: "+(Anjin.npc[npcId].nav.currX+","+Anjin.npc[npcId].nav.currY));
-                    //console.log("Next move: "+Anjin.npc[npcId].nav.nextMove);
+                    //console.log("Current tile: "+(this.npc[npcId].nav.currX+","+this.npc[npcId].nav.currY));
+                    //console.log("Next move: "+this.npc[npcId].nav.nextMove);
 
                     // Do calculation.
-                    AnjinModule.AnjinGame.easyStar.calculate();
+                    AnjinGame.easyStar.calculate();
                 }, 400);
             }
         }
@@ -342,7 +204,7 @@ class Anjin {
     }
 
     update() {
-        if (!(AnjinModule.AnjinGame.isPaused)) {
+        if (!(AnjinGame.isPaused)) {
             // Move player
             this.movePlayer();
             // Move camera
@@ -361,14 +223,14 @@ class Anjin {
     }
 
     togglePause() {
-        if (!AnjinModule.AnjinGame.isPaused) {
+        if (!AnjinGame.isPaused) {
             // It was not paused. PAUSE.
-            AnjinModule.AnjinGame.isPaused = true;
+            AnjinGame.isPaused = true;
             this.attackGui(true);
         }
         else {
             // It was paused. UNPAUSE.
-            AnjinModule.AnjinGame.isPaused = false;
+            AnjinGame.isPaused = false;
             this.attackGui(false);
         }
     }
@@ -378,17 +240,37 @@ class Anjin {
 
         var selections = null;
         var text = null;
-        // Find the "selections" subgroup.
-        for (var i=0; i < this.guiGroup.children.length; i++) {
+        // Find the "selections" subgroup
+        this.guiGroup.forEach(function(guiItem) {
+            if (guiItem.name == 'selections') {
+                selections = guiItem;
+            }
+        }, this);
+        /*for (var i=0; i < this.guiGroup.children.length; i++) {
             if (this.guiGroup.children[i].name == 'selections') {
                 selections = this.guiGroup.children[i];
             }
-        }
+        }*/
 
         if (isActive) {
             var squares = [];
+            var group: Phaser.Group = this.actorGroup;
+            group.forEach(function(actor) {
+                //var actor: DisplayObject = this.actorGroup.children[delta];
+                var padding = 20;
+                var square = this.game.add.bitmapData(actor.width + padding, actor.height + padding);
+                square.ctx.beginPath();
+                square.ctx.strokeStyle = 'red';
+                square.ctx.strokeRect(0, 0, square.width, square.height);
+                this.game.add.sprite(actor.x-(square.width / 2), actor.y-square.height + (padding / 2), square, null, selections);
+                if (this.texts['attackText']) {
+                    this.texts['attackText'].setText("Attack "+actor.key);
+                }
+            }, this);
+
+            /*
             for (var delta=1; delta < this.actorGroup.children.length; delta++) {
-                var actor = this.actorGroup.children[delta];
+                var actor: DisplayObject = this.actorGroup.children[delta];
                 var padding = 20;
                 var square = this.game.add.bitmapData(actor.width + padding, actor.height + padding);
                 square.ctx.beginPath();
@@ -398,7 +280,7 @@ class Anjin {
                 if (this.texts['attackText']) {
                     this.texts['attackText'].setText("Attack "+this.actorGroup.children[delta].key);
                 }
-            }
+            }*/
         }
         else {
             // Remove all selections squares.
@@ -473,11 +355,11 @@ class Anjin {
 
     moveNPCs() {
         // Handle NPC motion.
-        for (var npcId in Anjin.npc) {
-            if (Anjin.npc.hasOwnProperty(npcId)) {
+        for (var npcId in this.npc) {
+            if (this.npc.hasOwnProperty(npcId)) {
                 // We've got an NPC.
-                var npcSprite = Anjin.npc[npcId].sprite;
-                var npcNav = Anjin.npc[npcId].nav;
+                var npcSprite = this.npc[npcId].sprite;
+                var npcNav = this.npc[npcId].nav;
 
                 if (npcNav.isMoving) {
                     // Do nothing if it's currently moving!
@@ -490,7 +372,7 @@ class Anjin {
                         y: npcSprite.y
                     };
                     npcNav.isMoving = true;
-                    switch (Anjin.npc[npcId].nav.nextMove) {
+                    switch (this.npc[npcId].nav.nextMove) {
                         case "STOP":
                             npcNav.isMoving = false;
                             break;
@@ -533,11 +415,11 @@ class Anjin {
                         }, this);
                     }
 
-                    Anjin.npc[npcId].nav.nextMove = "STOP";
+                    this.npc[npcId].nav.nextMove = "STOP";
                     //console.log("Current Tile: "+ (Math.round((npcSprite.x-npcSprite.offsetX) / 64));
-                    Anjin.npc[npcId].nav.currX = (Math.round((npcSprite.x-npcSprite.offsetX) / 64) );
-                    Anjin.npc[npcId].nav.currY = (Math.round(npcSprite.y / 64)) - 1;
-                    //console.log("Current Tile: "+ Anjin.npc[npcId].nav.currX+","+Anjin.npc[npcId].nav.currY );
+                    this.npc[npcId].nav.currX = (Math.round((npcSprite.x-npcSprite.offsetX) / 64) );
+                    this.npc[npcId].nav.currY = (Math.round(npcSprite.y / 64)) - 1;
+                    //console.log("Current Tile: "+ this.npc[npcId].nav.currX+","+this.npc[npcId].nav.currY );
                 }
             }
         }
@@ -546,6 +428,5 @@ class Anjin {
     }
 }
 
-window.onload = () => {
-    var anjinGame = new Anjin();
-};
+console.log("Starting Anjin.");
+var anjinGame = new Anjin();
