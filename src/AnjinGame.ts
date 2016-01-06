@@ -1,6 +1,4 @@
-module AnjinModule {
-    export class AnjinGame {
-        static easyStar:easystarjs.js;
-        static isPaused:boolean = false;
-    }
+export class AnjinGame {
+    static easyStar:EasyStar.js;
+    static isPaused:boolean = false;
 }
