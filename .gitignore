@@ -3,3 +3,5 @@ bower_components
 anjin.js
 anjin.js.map
 typings
+src/**/*.js
+src/**/*.js.map
