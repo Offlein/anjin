@@ -1,0 +1,9 @@
+{
+  "module": "amd",
+  "compilerOptions": {
+    "target": "ES5"
+  },
+  "files": [
+    "anjin.ts"
+  ]
+}
