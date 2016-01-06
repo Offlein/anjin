@@ -20,4 +20,6 @@ Open the game in a webserver serving up index.html.
 
 It isn't a game.
 ----------------
-I know, sorry. It will be someday, I hope.
+I know, sorry. It will be someday, I hope. Enjoy this screenshot so far:
+
+![A screenshot](http://anjin.offlein.com/img/ss001.png)
