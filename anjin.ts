@@ -4,6 +4,7 @@
 import {Roles, Religion} from "./src/AnjinDataTypes";
 import {AnjinGame} from "./src/AnjinGame";
 import {AnjinCamera} from './src/AnjinCamera';
+import {coords, coordsType} from './src/AnjinStar';
 import {PlayerActor, NonPlayerActor} from './src/Actor/Actor';
 import {Keys} from './src/Keys';
 import Sprite = Phaser.Sprite;
@@ -138,14 +139,10 @@ export class Anjin {
 
         // More Naga setup.
         this.actorGroup.add(this.npc['naga'].sprite);
-        console.log("STARTX:" +start.x);
-        console.log("STARTY:" +start.y);
-        this.npc['naga'].nav.currX = ((start.x / 64));
-        this.npc['naga'].nav.currY = ((start.y / 64)) - 1;
-        this.npc['naga'].nav.destX = ((dest.x / 64));
-        this.npc['naga'].nav.destY = ((dest.y / 64));
-        console.log("CURR:",this.npc['naga'].nav.currX,',', this.npc['naga'].nav.currY);
-        console.log("DEST:",this.npc['naga'].nav.destX,',', this.npc['naga'].nav.destY);
+        this.npc['naga'].nav.curr = new coords(start.x, start.y, coordsType['Pixels']).convertToGrid();
+        this.npc['naga'].nav.dest = new coords(dest.x, dest.y, coordsType['Pixels']).convertToGrid();
+        console.log("CURR:",this.npc['naga'].nav.curr);
+        console.log("DEST:",this.npc['naga'].nav.dest);
 
         // Handle pathfinding for each NPC.
         for (var npcId in this.npc) {
@@ -157,47 +154,44 @@ export class Anjin {
                         //return;
                     }
                     // They're not, so let's plan.
-                    AnjinGame.easyStar.findPath(this.npc[npcId].nav.currX, this.npc[npcId].nav.currY,
-                        this.npc[npcId].nav.destX, this.npc[npcId].nav.destY, (path) => {
-                            console.log("CURR:",this.npc['naga'].nav.currX,',', this.npc['naga'].nav.currY);
-                            console.log("DEST:",this.npc['naga'].nav.destX,',', this.npc['naga'].nav.destY);
+                    AnjinGame.easyStar.findPath(this.npc[npcId].nav.curr.x, this.npc[npcId].nav.curr.y,
+                        this.npc[npcId].nav.dest.x, this.npc[npcId].nav.dest.y, (path) => {
+//                            console.log("CURR:",this.npc['naga'].nav.curr.x,',', this.npc['naga'].nav.curr.y);
+  //                          console.log("DEST:",this.npc['naga'].nav.dest.x,',', this.npc['naga'].nav.dest.y);
 
-                            console.log(path[1]);
+                            //console.log(path[1]);
                             if (path === null) {
                                 console.log("The path to the destination point was not found.");
                             }
                             if (path && path[1]) {
-                                var currX = this.npc[npcId].nav.currX;
-                                var currY = this.npc[npcId].nav.currY;
-                                var nextX = path[1].x;
-                                var nextY = path[1].y;
+                                var curr = this.npc[npcId].nav.curr;
+                                var next = new coords(path[1].x, path[1].y);
 
-                                console.log(currX, ',', currY);
-
+                                this.npc[npcId].nav.nextDest = next;
+                                
                                 var nextMove = "";
-                                if (nextY < currY) {
+                                if (next.y < curr.y) {
                                     nextMove += "N";
                                 }
-                                else if (nextY > currY) {
+                                else if (next.y > curr.y) {
                                     nextMove += "S";
                                 }
-                                if (nextX > currX) {
+                                if (next.x > curr.x) {
                                     nextMove += "E";
                                 }
-                                else if (nextX < currX) {
+                                else if (next.x < curr.x) {
                                     nextMove += "W";
                                 }
                                 if (nextMove === "") {
                                     nextMove = "STOP";
                                 }
-                                console.log(path);
                                 this.npc[npcId].nav.nextMove = nextMove;
                             }
                             else {
                                 this.npc[npcId].nav.nextMove = "STOP";
                             }
                         });
-                    //console.log("Current tile: "+(this.npc[npcId].nav.currX+","+this.npc[npcId].nav.currY));
+                    //console.log("Current tile: "+(this.npc[npcId].nav.curr.x+","+this.npc[npcId].nav.curr.y));
                     //console.log("Next move: "+this.npc[npcId].nav.nextMove);
 
                     // Do calculation.
@@ -217,6 +211,7 @@ export class Anjin {
         this.texts['attackText'] = attackText;
         attackText.fixedToCamera = true;
         attackText.fontSize = 72;
+
         this.guiGroup.add(attackText);
         this.guiGroup.visible = false;
     }
@@ -359,10 +354,9 @@ export class Anjin {
         }
 
         if (mustMove) {
-            var destX = this.anjinCamera.x*this.game.width;
-            var destY = this.anjinCamera.y*this.game.height;
+            var dest = new coords(this.anjinCamera.x*this.game.width, this.anjinCamera.y*this.game.height);
 
-            var t = this.game.add.tween(this.game.camera).to({x:destX, y:destY}, 600);
+            var t = this.game.add.tween(this.game.camera).to({x:dest.x, y:dest.y}, 600);
             t.start();
             t.onComplete.add(function(){this.anjinCamera.isMoving = false;}, this);
         }
@@ -384,6 +378,16 @@ export class Anjin {
                     x: npcSprite.x,
                     y: npcSprite.y
                 };
+
+                if (npcNav.nextDest != null && npcNav.nextDest.x && npcNav.nextDest.y) {
+                    this.npc[npcId].nav.curr.x = npcSprite.x-npcSprite.offsetX;
+                    this.npc[npcId].nav.curr.y = npcSprite.x-npcSprite.offsetY;
+                    console.log("Curr: ",npcNav.curr.convertToPx());
+                    console.log("Next: ",npcNav.nextDest.convertToPx());
+                    this.game.physics.arcade.moveToObject(npcSprite, npcNav.nextDest.convertToPx());
+                }
+
+                /*
                 switch (this.npc[npcId].nav.nextMove) {
                     case "STOP":
                         npcNav.isMoving = false;
@@ -444,17 +448,17 @@ export class Anjin {
                      // Done animating NPC move.
                      npcNav.isMoving = false;
                      }, this);*/
-                }
+                //}
 
                 //this.npc[npcId].nav.nextMove = "STOP";
                 //console.log("Current Tile: "+ (Math.round((npcSprite.x-npcSprite.offsetX) / 64)));
                 //console.log("Current Sprite: ", npcSprite.x, 'x',npcSprite.y);
-                console.log("NEWX:" +(npcSprite.x- npcSprite.offsetX));
-                console.log("NEWY:" +(npcSprite.y- 64));
-                console.log("NEWYtile:" +(Math.ceil((npcSprite.y-64) / 64)));
-                this.npc[npcId].nav.currX = (Math.ceil((npcSprite.x-npcSprite.offsetX) / 64 ));
-                this.npc[npcId].nav.currY = (Math.ceil((npcSprite.y-64) / 64));
-                //console.log("Current NavTile: "+ this.npc[npcId].nav.currX+","+this.npc[npcId].nav.currY );
+                //console.log("NEWX:" +(npcSprite.x- npcSprite.offsetX));
+                //console.log("NEWY:" +(npcSprite.y- 64));
+                //console.log("NEWYtile:" +(Math.ceil((npcSprite.y-64) / 64)));
+                //this.npc[npcId].nav.curr.x = (Math.ceil((npcSprite.x-npcSprite.offsetX) / 64 ));
+                //this.npc[npcId].nav.curr.y = (Math.ceil((npcSprite.y-64) / 64));
+                //console.log("Current NavTile: "+ this.npc[npcId].nav.curr.x+","+this.npc[npcId].nav.curr.y );
 
             }
         }
