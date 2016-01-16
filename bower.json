@@ -29,6 +29,6 @@
   "dependencies": {
     "easystarjs": "~0.2.3",
     "phaser": "~2.4.4",
-    "requirejs": "~2.1.22",
+    "requirejs": "~2.1.22"
   }
 }
