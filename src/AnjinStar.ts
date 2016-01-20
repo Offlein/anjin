@@ -19,13 +19,14 @@ export class coords {
         if (this.state == coordsType['Grid']) {
             return;
         }
-        return new coords(Math.floor(this.x / this.tileSize), Math.floor(this.y / this.tileSize), coordsType['Grid'], this.tileSize);
+        return new coords(Math.floor(this.x / this.tileSize), Math.ceil(this.y / this.tileSize), coordsType['Grid'], this.tileSize);
     }
-    convertToPixels(newX: number, newY: number) {
+    convertToPixels() {
         if (this.state == coordsType['Pixels']) {
             return;
         }
-        return new coords((this.x * this.tileSize) + (this.tileSize/2), (newY * this.tileSize) + (this.tileSize), coordsType['Pixels'], this.tileSize);
+        var ret = new coords((this.x * this.tileSize) + (this.tileSize/3), ((this.y) * this.tileSize)+64, coordsType['Pixels'], this.tileSize);
+        return ret;
     }
 }
 
@@ -34,6 +35,7 @@ export class anjinStar {
     curr: coords;
     dest: coords;
     nextDest: coords;
+    path: Array<Object> = [];
     nextMove:string = "STOP";
     isMoving:boolean = false;
     speed:number = 200; // # of MS to move one tile. Doesn't account for think time.

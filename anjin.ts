@@ -36,7 +36,6 @@ export class Anjin {
     texts: Object = {};
 
     constructor() {
-        console.log(this.player);
         this.game = new Phaser.Game(800, 600, Phaser.AUTO, '',
             {
                 preload: this.preload,
@@ -80,6 +79,7 @@ export class Anjin {
 
         // Initialize EasyStar Pathfinding
         AnjinGame.easyStar = new EasyStar.js();
+        AnjinGame.easyStar.disableCornerCutting();
 
         // Map out the collision data
         var collisionMap = this.collisionLayer.layer.data.map(function(row, rowIndex, data) {
@@ -116,7 +116,7 @@ export class Anjin {
 
         // Insert Player sprite ("Blackthorne").
         this.player = new PlayerActor('Blackthorne')
-        this.player.sprite = this.actorGroup.create(1024, 192, 'blackthorne');
+        this.player.sprite = this.actorGroup.create(1300, 800, 'blackthorne');
         this.player.sprite.anchor.set(0.5, 1);
 
         // Focus camera
@@ -141,8 +141,8 @@ export class Anjin {
         this.actorGroup.add(this.npc['naga'].sprite);
         this.npc['naga'].nav.curr = new coords(start.x, start.y, coordsType['Pixels']).convertToGrid();
         this.npc['naga'].nav.dest = new coords(dest.x, dest.y, coordsType['Pixels']).convertToGrid();
-        console.log("CURR:",this.npc['naga'].nav.curr);
-        console.log("DEST:",this.npc['naga'].nav.dest);
+        //console.log("CURR:",this.npc['naga'].nav.curr);
+        //console.log("DEST:",this.npc['naga'].nav.dest);
 
         // Handle pathfinding for each NPC.
         for (var npcId in this.npc) {
@@ -151,48 +151,24 @@ export class Anjin {
                 setInterval(() => {
                     // Only find a path if the NPC is not moving
                     if (this.npc[npcId].nav.isMoving) {
-                        //return;
+                        return;
                     }
                     // They're not, so let's plan.
-                    AnjinGame.easyStar.findPath(this.npc[npcId].nav.curr.x, this.npc[npcId].nav.curr.y,
+                    var currentPx = new coords(this.npc[npcId].sprite.x, this.npc[npcId].sprite.y, coordsType['Pixels']);
+                    var currentGrid = currentPx.convertToGrid();
+                    currentGrid.y = currentGrid.y - 1;
+                    AnjinGame.easyStar.findPath(currentGrid.x, currentGrid.y,
                         this.npc[npcId].nav.dest.x, this.npc[npcId].nav.dest.y, (path) => {
-//                            console.log("CURR:",this.npc['naga'].nav.curr.x,',', this.npc['naga'].nav.curr.y);
-  //                          console.log("DEST:",this.npc['naga'].nav.dest.x,',', this.npc['naga'].nav.dest.y);
-
-                            //console.log(path[1]);
                             if (path === null) {
                                 console.log("The path to the destination point was not found.");
                             }
                             if (path && path[1]) {
-                                var curr = this.npc[npcId].nav.curr;
-                                var next = new coords(path[1].x, path[1].y);
-
-                                this.npc[npcId].nav.nextDest = next;
-                                
-                                var nextMove = "";
-                                if (next.y < curr.y) {
-                                    nextMove += "N";
-                                }
-                                else if (next.y > curr.y) {
-                                    nextMove += "S";
-                                }
-                                if (next.x > curr.x) {
-                                    nextMove += "E";
-                                }
-                                else if (next.x < curr.x) {
-                                    nextMove += "W";
-                                }
-                                if (nextMove === "") {
-                                    nextMove = "STOP";
-                                }
-                                this.npc[npcId].nav.nextMove = nextMove;
+                                this.npc[npcId].nav.path = path;
                             }
                             else {
                                 this.npc[npcId].nav.nextMove = "STOP";
                             }
                         });
-                    //console.log("Current tile: "+(this.npc[npcId].nav.curr.x+","+this.npc[npcId].nav.curr.y));
-                    //console.log("Next move: "+this.npc[npcId].nav.nextMove);
 
                     // Do calculation.
                     AnjinGame.easyStar.calculate();
@@ -372,93 +348,66 @@ export class Anjin {
                 // We've got an NPC.
                 var npcSprite = this.npc[npcId].sprite;
                 var npcNav = this.npc[npcId].nav;
+                var currentPx = new coords(npcSprite.x, npcSprite.y, coordsType['Pixels']);
+                var currentGrid = currentPx.convertToGrid();
 
-                // We're not moving - let's go!
-                var impulseDest = {
-                    x: npcSprite.x,
-                    y: npcSprite.y
-                };
+                currentGrid.y = currentGrid.y - 1;
+                //console.log("PX Sprite", this.npc[npcId].sprite.x, this.npc[npcId].sprite.y);
+                //console.log("Sprite GRID: ", currentGrid);
 
-                if (npcNav.nextDest != null && npcNav.nextDest.x && npcNav.nextDest.y) {
-                    this.npc[npcId].nav.curr.x = npcSprite.x-npcSprite.offsetX;
-                    this.npc[npcId].nav.curr.y = npcSprite.x-npcSprite.offsetY;
-                    console.log("Curr: ",npcNav.curr.convertToPx());
-                    console.log("Next: ",npcNav.nextDest.convertToPx());
-                    this.game.physics.arcade.moveToObject(npcSprite, npcNav.nextDest.convertToPx());
+                // Speed in pixels per second.
+                var speed = 200;
+                if (npcNav.path.length > 1) {
+                    var nextMove = null;
+
+                    // Update path to see if we've reached any point in it.
+                    for (var i=1; i < npcNav.path.length; i++) {
+                        if (currentGrid.x == npcNav.path[i].x && currentGrid.y == npcNav.path[i].y) {
+                            // We're at this point in the path; clear everything up to it.
+                            npcNav.path.splice(0, i);
+                            nextMove = npcNav.path[i+1];
+                        }
+                        else {
+                            // This isn't in the current Path; assume we're at the beginning.
+                            nextMove = npcNav.path[i];
+                            break;
+                        }
+                    }
+                    //console.log("Next move: ",nextMove);
+                    var npcSprite = this.npc[npcId].sprite;
+                    if (!nextMove) {
+                        npcSprite.body.velocity.x = 0;
+                        npcSprite.body.velocity.y = 0;
+                    }
+                    else {
+                        var next = new coords(nextMove.x, nextMove.y, coordsType['Grid']);
+                        var nextPx = next.convertToPixels();
+
+                        // Fuzzy math for being within a margin of the point slows the speed down.
+                        var margin = 4;
+                        if ((nextPx.x != npcSprite.x) && (((nextPx.x - margin) <= npcSprite.x) && ((nextPx.x + margin) >= npcSprite.x))) {
+                            this.game.add.tween(npcSprite).to({x: nextPx.x}, margin);
+                        }
+                        if ((nextPx.y != npcSprite.y) && (((nextPx.y - margin) <= npcSprite.y) && ((nextPx.y + margin) >= npcSprite.y))) {
+                            this.game.add.tween(npcSprite).to({y: nextPx.y}, margin);
+                        }
+                        if (npcSprite.x != nextPx.x || npcSprite.y != nextPx.y) {
+                            this.game.physics.arcade.moveToObject(this.npc[npcId].sprite, nextPx, speed);
+                        }
+                        else {
+                            npcSprite.body.velocity.x = 0;
+                            npcSprite.body.velocity.y = 0;
+                        }
+                    }
+
+
                 }
-
-                /*
-                switch (this.npc[npcId].nav.nextMove) {
-                    case "STOP":
-                        npcNav.isMoving = false;
-                        npcSprite.body.velocity.y = 0;
-                        npcSprite.body.velocity.x = 0;
-                        break;
-                    case "N":
-                        impulseDest.y = npcSprite.y - 64;
-                        npcSprite.body.velocity.y = -200;
-                        npcSprite.body.velocity.x = 0;
-                        break;
-                    case "NE":
-                        npcSprite.body.velocity.y = -200;
-                        npcSprite.body.velocity.x = 200;
-                        impulseDest.x = npcSprite.x + 64;
-                        impulseDest.y = npcSprite.y - 64;
-                        break;
-                    case "NW":
-                        npcSprite.body.velocity.y = -200;
-                        npcSprite.body.velocity.x = -200;
-                        impulseDest.x = npcSprite.x - 64;
-                        impulseDest.y = npcSprite.y - 64;
-                        break;
-                    case "W":
-                        npcSprite.body.velocity.y = 0;
-                        npcSprite.body.velocity.x = -200;
-                        impulseDest.x = npcSprite.x - 64;
-                        break;
-                    case "E":
-                        npcSprite.body.velocity.y = 0;
-                        npcSprite.body.velocity.x = 200;
-                        impulseDest.x = npcSprite.x + 64;
-                        break;
-                    case "S":
-                        npcSprite.body.velocity.y = 200;
-                        npcSprite.body.velocity.x = 0;
-                        impulseDest.y = npcSprite.y + 64;
-                        break;
-                    case "SE":
-                        npcSprite.body.velocity.y = 200;
-                        npcSprite.body.velocity.x = 200;
-                        impulseDest.x = npcSprite.x + 64;
-                        impulseDest.y = npcSprite.y + 64;
-                        break;
-                    case "SW":
-                        npcSprite.body.velocity.y = 200;
-                        npcSprite.body.velocity.x = -200;
-                        impulseDest.x = npcSprite.x - 64;
-                        impulseDest.y = npcSprite.y + 64;
-                        break;
+                else if (npcNav.path[0]) {
+                    nextMove = npcNav.path[0];
+                    var next = new coords(nextMove.x, nextMove.y, coordsType['Grid']);
+                    var nextPx = next.convertToPixels();
+                    this.game.add.tween(npcSprite).to({x: nextPx.x, y: nextPx.y}, speed);
                 }
-                // Process impulse.
-                if (impulseDest.x != npcSprite.x || impulseDest.y != npcSprite.y) {
-                    /*
-                     var t = this.game.add.tween(npcSprite).to({x:impulseDest.x, y:impulseDest.y}, npcNav.speed);
-                     t.start();
-                     t.onComplete.add(function(){
-                     // Done animating NPC move.
-                     npcNav.isMoving = false;
-                     }, this);*/
-                //}
-
-                //this.npc[npcId].nav.nextMove = "STOP";
-                //console.log("Current Tile: "+ (Math.round((npcSprite.x-npcSprite.offsetX) / 64)));
-                //console.log("Current Sprite: ", npcSprite.x, 'x',npcSprite.y);
-                //console.log("NEWX:" +(npcSprite.x- npcSprite.offsetX));
-                //console.log("NEWY:" +(npcSprite.y- 64));
-                //console.log("NEWYtile:" +(Math.ceil((npcSprite.y-64) / 64)));
-                //this.npc[npcId].nav.curr.x = (Math.ceil((npcSprite.x-npcSprite.offsetX) / 64 ));
-                //this.npc[npcId].nav.curr.y = (Math.ceil((npcSprite.y-64) / 64));
-                //console.log("Current NavTile: "+ this.npc[npcId].nav.curr.x+","+this.npc[npcId].nav.curr.y );
 
             }
         }
