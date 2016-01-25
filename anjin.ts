@@ -35,6 +35,7 @@ export class Anjin {
     guiGroup: Phaser.Group;
     texts: Object = {};
     isPaused: boolean = false;
+    pauseSettings: {'selected': number};
 
     constructor() {
         this.game = new Phaser.Game(800, 600, Phaser.AUTO, '',
@@ -44,6 +45,7 @@ export class Anjin {
                 update: this.update,
                 togglePause: this.togglePause,
                 attackGui: this.attackGui,
+                pauseSelect: this.pauseSelect,
                 movePlayer: this.movePlayer,
                 moveCamera: this.moveCamera,
                 moveNPCs: this.moveNPCs,
@@ -128,6 +130,9 @@ export class Anjin {
         spaceKey.onDown.add(() => {
             this.togglePause();
         });
+        this.pauseSettings = {
+          selected: 0
+        };
 
         // Hardcode one NPC for now: Naga.
         this.npc['naga'].sprite = this.game.add.sprite(start.x+(start.width / 2), start.y + (start.height), 'naga');
@@ -181,13 +186,12 @@ export class Anjin {
         this.guiGroup = this.game.add.group();
         this.game.add.group(this.guiGroup, 'selections');
         var attackText = this.game.add.text(20, this.game.scale.height-100, 'No one to attack.', {
-            'backgroundColor': '#FFFFFF',
-            'fontSize': 32
+            'backgroundColor': '#FFFFFF'
         });
         this.texts = {};
         this.texts['attackText'] = attackText;
         attackText.fixedToCamera = true;
-        attackText.fontSize = 72;
+        attackText.fontSize = 32;
 
         this.guiGroup.add(attackText);
         this.guiGroup.visible = false;
@@ -209,6 +213,7 @@ export class Anjin {
             // Stop Player.
             this.player.sprite.body.velocity.x = 0;
             this.player.sprite.body.velocity.y = 0;
+
             // Stop all NPCs.
             // Handle NPC motion.
             for (var npcId in this.npc) {
@@ -218,6 +223,9 @@ export class Anjin {
                 this.npc[npcId].sprite.body.velocity.x = 0;
                 this.npc[npcId].sprite.body.velocity.y = 0;
             }
+
+            // Handle AttackGUI
+            this.attackGui(true);
         }
     }
 
@@ -225,7 +233,6 @@ export class Anjin {
         if (!this.isPaused) {
             // It was not paused. PAUSE.
             this.isPaused = true;
-            this.attackGui(true);
         }
         else {
             // It was paused. UNPAUSE.
@@ -246,29 +253,69 @@ export class Anjin {
             }
         }, this);
 
+        // Remove all selections squares.
+        for (var i=0; i < this.guiGroup.children.length; i++) {
+            selections.removeAll();
+        }
+
         if (isActive) {
             var group: Phaser.Group = this.actorGroup;
-            group.forEach(function(actor) {
-                if (actor.key == 'blackthorne') {
-                    return;
+            var actor;
+            var delta = 0;
+
+            if (this.pauseSettings && this.pauseSettings.selected) {
+                delta = this.pauseSettings.selected;
+            }
+
+            actor = group.getAt(delta);
+            if (actor.key == 'blackthorne' && group.length > 1) {
+                delta = 1;
+                //actor = group.getAt(delta);
+                // actor = null;
+
+            }
+            this.pauseSettings.selected = delta;
+            this.pauseSelect(actor, selections);
+            if (actor) {
+                this.pauseSelect(actor, selections);
+            }
+
+            // Scroll selections right.
+            this.keys.right.onUp.add(function(theKey, delta, group) {
+                if ((group.length - 1) > delta) {
+                    this.pauseSettings.selected = delta+1;
                 }
-                var padding = 20;
-                var square = this.game.add.bitmapData(actor.width + padding, actor.height + padding);
-                square.ctx.beginPath();
-                square.ctx.strokeStyle = 'red';
-                square.ctx.strokeRect(0, 0, square.width, square.height);
-                this.game.add.sprite(actor.x-(square.width / 2), actor.y-square.height + (padding / 2), square, null, selections);
-                if (this.texts['attackText']) {
-                    this.texts['attackText'].setText("Attack "+actor.key);
+                else {
+                    this.pauseSettings.selected = 0;
                 }
-            }, this);
+            }, this, 0, delta, group);
+
+            // Scroll selections left.
+            this.keys.left.onUp.add(function(theKey, delta, group) {
+                if (delta == 0) {
+                    this.pauseSettings.selected = group.length - 1;
+                }
+                else {
+                    this.pauseSettings.selected = delta -1;
+                }
+            }, this, 0, delta, group);
 
         }
-        else {
-            // Remove all selections squares.
-            for (var i=0; i < this.guiGroup.children.length; i++) {
-                selections.removeAll();
-            }
+    }
+
+    pauseSelect(actor, selections) {
+        var padding = 20;
+        var square = this.game.add.bitmapData(actor.width + padding, actor.height + padding);
+
+        // Create a red line selector.
+        square.ctx.beginPath();
+        square.ctx.strokeStyle = 'red';
+        square.ctx.strokeRect(0, 0, square.width, square.height);
+        this.game.add.sprite(actor.x-(square.width / 2), actor.y-square.height + (padding / 2), square, null, selections);
+
+        if (this.texts['attackText']) {
+            // Set attack text.
+            this.texts['attackText'].setText("Attack "+actor.key);
         }
     }
 
