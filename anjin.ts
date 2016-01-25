@@ -34,6 +34,7 @@ export class Anjin {
     actorGroup: Phaser.Group;
     guiGroup: Phaser.Group;
     texts: Object = {};
+    isPaused: boolean = false;
 
     constructor() {
         this.game = new Phaser.Game(800, 600, Phaser.AUTO, '',
@@ -193,7 +194,7 @@ export class Anjin {
     }
 
     update() {
-        if (!(AnjinGame.isPaused)) {
+        if (!(this.isPaused)) {
             // Move player
             this.movePlayer();
             // Move camera
@@ -208,18 +209,27 @@ export class Anjin {
             // Stop Player.
             this.player.sprite.body.velocity.x = 0;
             this.player.sprite.body.velocity.y = 0;
+            // Stop all NPCs.
+            // Handle NPC motion.
+            for (var npcId in this.npc) {
+                if (!this.npc.hasOwnProperty(npcId)) {
+                    continue;
+                }
+                this.npc[npcId].sprite.body.velocity.x = 0;
+                this.npc[npcId].sprite.body.velocity.y = 0;
+            }
         }
     }
 
     togglePause() {
-        if (!AnjinGame.isPaused) {
+        if (!this.isPaused) {
             // It was not paused. PAUSE.
-            AnjinGame.isPaused = true;
+            this.isPaused = true;
             this.attackGui(true);
         }
         else {
             // It was paused. UNPAUSE.
-            AnjinGame.isPaused = false;
+            this.isPaused = false;
             this.attackGui(false);
         }
     }
@@ -351,62 +361,70 @@ export class Anjin {
                 var currentPx = new coords(npcSprite.x, npcSprite.y, coordsType['Pixels']);
                 var currentGrid = currentPx.convertToGrid();
 
-                currentGrid.y = currentGrid.y - 1;
-                //console.log("PX Sprite", this.npc[npcId].sprite.x, this.npc[npcId].sprite.y);
-                //console.log("Sprite GRID: ", currentGrid);
+                // Handle pause stuff, if we're paused.
+                if (AnjinGame.isPaused) {
+                    npcSprite.body.velocity.x = 0;
+                    npcSprite.body.velocity.y = 0;
+                    console.log("Stopping ",npcId);
+                }
+                else {
+                    currentGrid.y = currentGrid.y - 1;
+                    //console.log("PX Sprite", this.npc[npcId].sprite.x, this.npc[npcId].sprite.y);
+                    //console.log("Sprite GRID: ", currentGrid);
 
-                // Speed in pixels per second.
-                var speed = 200;
-                if (npcNav.path.length > 1) {
-                    var nextMove = null;
+                    // Speed in pixels per second.
+                    var speed = 200;
+                    if (npcNav.path.length > 1) {
+                        var nextMove = null;
 
-                    // Update path to see if we've reached any point in it.
-                    for (var i=1; i < npcNav.path.length; i++) {
-                        if (currentGrid.x == npcNav.path[i].x && currentGrid.y == npcNav.path[i].y) {
-                            // We're at this point in the path; clear everything up to it.
-                            npcNav.path.splice(0, i);
-                            nextMove = npcNav.path[i+1];
+                        // Update path to see if we've reached any point in it.
+                        for (var i=1; i < npcNav.path.length; i++) {
+                            if (currentGrid.x == npcNav.path[i].x && currentGrid.y == npcNav.path[i].y) {
+                                // We're at this point in the path; clear everything up to it.
+                                npcNav.path.splice(0, i);
+                                nextMove = npcNav.path[i+1];
+                            }
+                            else {
+                                // This isn't in the current Path; assume we're at the beginning.
+                                nextMove = npcNav.path[i];
+                                break;
+                            }
                         }
-                        else {
-                            // This isn't in the current Path; assume we're at the beginning.
-                            nextMove = npcNav.path[i];
-                            break;
-                        }
-                    }
-                    //console.log("Next move: ",nextMove);
-                    var npcSprite = this.npc[npcId].sprite;
-                    if (!nextMove) {
-                        npcSprite.body.velocity.x = 0;
-                        npcSprite.body.velocity.y = 0;
-                    }
-                    else {
-                        var next = new coords(nextMove.x, nextMove.y, coordsType['Grid']);
-                        var nextPx = next.convertToPixels();
-
-                        // Fuzzy math for being within a margin of the point slows the speed down.
-                        var margin = 4;
-                        if ((nextPx.x != npcSprite.x) && (((nextPx.x - margin) <= npcSprite.x) && ((nextPx.x + margin) >= npcSprite.x))) {
-                            this.game.add.tween(npcSprite).to({x: nextPx.x}, margin);
-                        }
-                        if ((nextPx.y != npcSprite.y) && (((nextPx.y - margin) <= npcSprite.y) && ((nextPx.y + margin) >= npcSprite.y))) {
-                            this.game.add.tween(npcSprite).to({y: nextPx.y}, margin);
-                        }
-                        if (npcSprite.x != nextPx.x || npcSprite.y != nextPx.y) {
-                            this.game.physics.arcade.moveToObject(this.npc[npcId].sprite, nextPx, speed);
-                        }
-                        else {
+                        //console.log("Next move: ",nextMove);
+                        var npcSprite = this.npc[npcId].sprite;
+                        if (!nextMove) {
                             npcSprite.body.velocity.x = 0;
                             npcSprite.body.velocity.y = 0;
                         }
+                        else {
+                            var next = new coords(nextMove.x, nextMove.y, coordsType['Grid']);
+                            var nextPx = next.convertToPixels();
+
+                            // Fuzzy math for being within a margin of the point slows the speed down.
+                            var margin = 4;
+                            if ((nextPx.x != npcSprite.x) && (((nextPx.x - margin) <= npcSprite.x) && ((nextPx.x + margin) >= npcSprite.x))) {
+                                this.game.add.tween(npcSprite).to({x: nextPx.x}, margin);
+                            }
+                            if ((nextPx.y != npcSprite.y) && (((nextPx.y - margin) <= npcSprite.y) && ((nextPx.y + margin) >= npcSprite.y))) {
+                                this.game.add.tween(npcSprite).to({y: nextPx.y}, margin);
+                            }
+                            if (npcSprite.x != nextPx.x || npcSprite.y != nextPx.y) {
+                                this.game.physics.arcade.moveToObject(this.npc[npcId].sprite, nextPx, speed);
+                            }
+                            else {
+                                npcSprite.body.velocity.x = 0;
+                                npcSprite.body.velocity.y = 0;
+                            }
+                        }
+
+
                     }
-
-
-                }
-                else if (npcNav.path[0]) {
-                    nextMove = npcNav.path[0];
-                    var next = new coords(nextMove.x, nextMove.y, coordsType['Grid']);
-                    var nextPx = next.convertToPixels();
-                    this.game.add.tween(npcSprite).to({x: nextPx.x, y: nextPx.y}, speed);
+                    else if (npcNav.path[0]) {
+                        nextMove = npcNav.path[0];
+                        var next = new coords(nextMove.x, nextMove.y, coordsType['Grid']);
+                        var nextPx = next.convertToPixels();
+                        this.game.add.tween(npcSprite).to({x: nextPx.x, y: nextPx.y}, speed);
+                    }
                 }
 
             }
