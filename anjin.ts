@@ -245,11 +245,6 @@ export class Anjin {
                 selections = guiItem;
             }
         }, this);
-        /*for (var i=0; i < this.guiGroup.children.length; i++) {
-         if (this.guiGroup.children[i].name == 'selections') {
-         selections = this.guiGroup.children[i];
-         }
-         }*/
 
         if (isActive) {
             var squares = [];
@@ -267,19 +262,6 @@ export class Anjin {
                 }
             }, this);
 
-            /*
-             for (var delta=1; delta < this.actorGroup.children.length; delta++) {
-             var actor: DisplayObject = this.actorGroup.children[delta];
-             var padding = 20;
-             var square = this.game.add.bitmapData(actor.width + padding, actor.height + padding);
-             square.ctx.beginPath();
-             square.ctx.strokeStyle = 'red';
-             square.ctx.strokeRect(0, 0, square.width, square.height);
-             this.game.add.sprite(actor.x-(square.width / 2), actor.y-square.height + (padding / 2), square, null, selections);
-             if (this.texts['attackText']) {
-             this.texts['attackText'].setText("Attack "+this.actorGroup.children[delta].key);
-             }
-             }*/
         }
         else {
             // Remove all selections squares.
