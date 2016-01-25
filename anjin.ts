@@ -247,10 +247,11 @@ export class Anjin {
         }, this);
 
         if (isActive) {
-            var squares = [];
             var group: Phaser.Group = this.actorGroup;
             group.forEach(function(actor) {
-                //var actor: DisplayObject = this.actorGroup.children[delta];
+                if (actor.key == 'blackthorne') {
+                    return;
+                }
                 var padding = 20;
                 var square = this.game.add.bitmapData(actor.width + padding, actor.height + padding);
                 square.ctx.beginPath();
