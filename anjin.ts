@@ -1,5 +1,5 @@
 /// <reference path="./lib/phaser.d.ts" />
-/// <reference path="./typings/easystarjs/easystarjs.d.ts" />
+/// <reference path="./node_modules/retyped-easystarjs-tsd-ambient/easystarjs.d.ts" />
 
 import {Roles, Religion} from "./src/AnjinDataTypes";
 import {AnjinGame} from "./src/AnjinGame";

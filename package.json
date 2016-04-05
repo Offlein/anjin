@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/Offlein/anjin/issues"
   },
-  "homepage": "https://github.com/Offlein/anjin#readme"
+  "homepage": "https://github.com/Offlein/anjin#readme",
+  "devDependencies": {
+    "retyped-easystarjs-tsd-ambient": "^0.1.6-0"
+  }
 }
