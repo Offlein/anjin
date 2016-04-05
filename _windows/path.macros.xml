@@ -1,0 +1,6 @@
+<application>
+  <component name="PathMacrosImpl">
+    <macro name="PATH" value="C:/Program Files/Git/bin;C:/Program Files/nodejs/node_modules/npm/bin;C:/Program Files/nodejs" />
+    <macro name="git" value="C:/Program Files/Git/bin" />
+  </component>
+</application>
