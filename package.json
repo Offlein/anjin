@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Offlein/anjin#readme",
   "devDependencies": {
+    "easystarjs": "^0.2.3",
     "retyped-easystarjs-tsd-ambient": "^0.1.6-0"
   }
 }

@@ -6,6 +6,7 @@ import {AnjinGame} from "./src/AnjinGame";
 import {AnjinCamera} from './src/AnjinCamera';
 import {PlayerActor, NonPlayerActor} from './src/Actor/Actor';
 import {Keys} from './src/Keys';
+import EasyStar = require('easystarjs');
 
 class ObjectEntity {
     height: number;
@@ -20,7 +21,7 @@ class ObjectEntity {
 }
 
 
-export class Anjin {
+class Anjin {
     game: Phaser.Game;
     map: Phaser.Tilemap;
     collisionLayer: Phaser.TilemapLayer;
@@ -77,7 +78,7 @@ export class Anjin {
         this.map.setCollisionBetween(22, 39, true, 'collision');
 
         // Initialize EasyStar Pathfinding
-        AnjinGame.easyStar = new EasyStar.js();
+        AnjinGame.easyStar = new EasyStar.js;
 
         // Map out the collision data
         var collisionMap = this.collisionLayer.layer.data.map(function(row, rowIndex, data) {
@@ -427,6 +428,8 @@ export class Anjin {
     render() {
     }
 }
+
+export = Anjin;
 
 console.log("Starting Anjin.");
 var anjinGame = new Anjin();
