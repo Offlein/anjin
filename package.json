@@ -15,5 +15,11 @@
   "bugs": {
     "url": "https://github.com/Offlein/anjin/issues"
   },
-  "homepage": "https://github.com/Offlein/anjin#readme"
+  "homepage": "https://github.com/Offlein/anjin#readme",
+  "devDependencies": {
+    "browserify": "^13.0.0",
+    "easystarjs": "^0.2.3",
+    "retyped-easystarjs-tsd-ambient": "^0.1.6-0",
+    "tsify": "^0.14.2"
+  }
 }

@@ -5,14 +5,10 @@ Requirements
 ------------
 This runs on Phaser v2.4.4. I've included it in the /lib directory. Probably I shouldn't do that... But I had to patch it. (See https://github.com/photonstorm/phaser/pull/2244)
 
-You need [Bower](http://bower.io/) to include easystarjs v0.2.3, RequireJS, and whatever else I add.  
-Run `bower install`
+This is all in TypeScript, and meant to run in the browser. so you'll need to use [Browserify](http://browserify.org) with [tsify](https://www.npmjs.com/package/tsify).
+Install those globally with: `npm install -g browserify` and then `npm install -g tsify`
 
-You need [TSD](http://definitelytyped.org/tsd/) to include TypeScript definitions, if you want 'em.  
-Run `tsd install`
-
-Finally, this is all in TypeScript, so you'll need a [TypeScript compiler](http://www.typescriptlang.org/#Download). It should work just with the `tsc` command, because of the tsconfig.json file, but in case not...   
-Run `tsc --module amd --target ES5 anjin.ts`
+To compile, run the following command: `browserify anjin.ts -p tsify --noImplicitAny  > anjin.js`
 
 How To Play
 -----------
